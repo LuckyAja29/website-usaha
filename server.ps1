@@ -47,17 +47,25 @@ while ($listener.IsListening) {
                 if ($json.base64Data) {
                     $bytes = [System.Convert]::FromBase64String($json.base64Data)
                     [System.IO.File]::WriteAllBytes($filePath, $bytes)
-                    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Berhasil memperbarui file: $fileName" -ForegroundColor Green
+                    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Berhasil memperbarui file: $filePath" -ForegroundColor Green
                 }
 
                 $escapedPath = $filePath.Replace('\', '\\')
-                $respText = "{`"status`":`"ok`",`"message`":`"File berhasil disimpan langsung ke disk`",`"path`":`"$escapedPath`"}"
+                $respText = "{`"status`":`"ok`",`"message`":`"File berhasil disimpan langsung`",`"path`":`"$escapedPath`"}"
                 $respBytes = [System.Text.Encoding]::UTF8.GetBytes($respText)
                 $res.ContentType = "application/json; charset=utf-8"
                 $res.ContentLength64 = $respBytes.Length
                 $res.OutputStream.Write($respBytes, 0, $respBytes.Length)
+            } catch [System.IO.IOException] {
+                Write-Host "[Peringatan] File sedang dibuka di aplikasi lain (misal Microsoft Excel): $($_.Exception.Message)" -ForegroundColor Red
+                $errText = "{`"status`":`"error`",`"code`":`"FILE_LOCKED`",`"message`":`"File Excel sedang dibuka di Microsoft Excel. Harap tutup file di Excel terlebih dahulu agar sistem dapat memperbaruinya.`"}"
+                $errBytes = [System.Text.Encoding]::UTF8.GetBytes($errText)
+                $res.StatusCode = 423 # Locked
+                $res.ContentType = "application/json; charset=utf-8"
+                $res.ContentLength64 = $errBytes.Length
+                $res.OutputStream.Write($errBytes, 0, $errBytes.Length)
             } catch {
-                Write-Host "[Error] Gagal menulis file: $_" -ForegroundColor Red
+                Write-Host "[Error] Gagal menulis file: $($_.Exception.Message)" -ForegroundColor Red
                 $errText = "{`"status`":`"error`",`"message`":`"$($_.Exception.Message)`"}"
                 $errBytes = [System.Text.Encoding]::UTF8.GetBytes($errText)
                 $res.StatusCode = 500
