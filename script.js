@@ -6,7 +6,7 @@
 // 1. Inisialisasi Supabase Client
 // ==========================================
 // GANTI DENGAN URL & ANON KEY DARI DASHBOARD SUPABASE ANDA
-const SUPABASE_URL = "https://kvzprcxnixuhvrsxercw.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://kvzprcxnixuhvrsxercw.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2enByY3huaXh1aHZyc3hlcmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjYxODIsImV4cCI6MjEwMzE0MjE4Mn0.-EGpdF6WbjYdQxECZw_7WF73l0Ky3o35wMMVSUem0Zs";
 
