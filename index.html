@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manajemen Keuangan Usaha - Auto-Save Excel</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- SheetJS (xlsx) for Excel Read & Write -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="logo-icon">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div>
+          <h1>BukuKas Usaha</h1>
+          <p class="subtitle">Pencatatan Keuangan & Auto-Save Langsung ke File Excel</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnQuickExport" class="btn btn-outline" title="Unduh salinan cadangan file Excel">
+          <i class="fa-solid fa-cloud-arrow-down"></i>
+          <span>Unduh Salinan Excel</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Notice Banner for File:// Mode -->
+    <div id="serverModeBanner" class="server-banner" style="display: none;">
+      <i class="fa-solid fa-circle-info"></i>
+      <div>
+        <strong>Perhatian:</strong> Anda membuka aplikasi melalui protokol file lokal. Untuk mengaktifkan
+        <strong>penyimpanan langsung ke file Excel di komputer tanpa download</strong>, silakan buka aplikasi melalui
+        file <strong><code>Jalankan_Aplikasi.bat</code></strong> (atau akses <code>http://localhost:8080</code>).
+      </div>
+    </div>
+
+    <!-- Excel Auto-Sync Bar -->
+    <section class="excel-sync-bar">
+      <div class="sync-status-info">
+        <div class="sync-icon-box" id="syncStatusIconBox">
+          <i class="fa-solid fa-file-excel"></i>
+        </div>
+        <div class="sync-text-group">
+          <div class="sync-header-line">
+            <span class="sync-title">File Excel Penyimpanan:</span>
+            <span id="syncFileName" class="sync-filename-badge">BukuKas_Usaha.xlsx</span>
+            <span id="syncStatusBadge" class="sync-badge badge-success">
+              <span class="sync-pulse"></span>
+              <span id="syncStatusText">Auto-Save Langsung</span>
+            </span>
+          </div>
+          <p class="sync-desc" id="syncDesc">
+            🟢 <strong>Penyimpanan Langsung di Komputer:</strong> Setiap transaksi (tambah / hapus) langsung mengubah
+            file <code>BukuKas_Usaha.xlsx</code> tanpa mengunduh file baru.
+          </p>
+        </div>
+      </div>
+
+      <!-- Sync Controls -->
+      <div class="sync-controls-group">
+        <div class="sync-actions">
+          <button id="btnConnectExcel" class="btn btn-excel"
+            title="Pilih file Excel tertentu di komputer Anda untuk dijadikan target penyimpanan">
+            <i class="fa-solid fa-folder-tree"></i>
+            <span id="btnConnectText">Hubungkan File Excel Saya</span>
+          </button>
+          <button id="btnOpenExistingExcel" class="btn btn-secondary"
+            title="Buka dan muat data dari file Excel yang sudah ada">
+            <i class="fa-solid fa-folder-open"></i>
+            <span>Buka File Excel Ada</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary Cards / Ringkasan Saldo -->
+    <section class="summary-grid">
+      <div class="summary-card card-balance">
+        <div class="card-icon">
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <div class="card-info">
+          <span class="card-label">Sisa Saldo</span>
+          <h2 id="totalBalance" class="card-value">Rp 0</h2>
+          <span class="card-trend" id="balanceStatus">Status: Netral</span>
+        </div>
+      </div>
+
+      <div class="summary-card card-income">
+        <div class="card-icon">
+          <i class="fa-solid fa-arrow-down-left"></i>
+        </div>
+        <div class="card-info">
+          <span class="card-label">Total Pemasukan</span>
+          <h2 id="totalIncome" class="card-value text-income">Rp 0</h2>
+          <span class="card-subtext" id="incomeCount">0 transaksi</span>
+        </div>
+      </div>
+
+      <div class="summary-card card-expense">
+        <div class="card-icon">
+          <i class="fa-solid fa-arrow-up-right"></i>
+        </div>
+        <div class="card-info">
+          <span class="card-label">Total Pengeluaran</span>
+          <h2 id="totalExpense" class="card-value text-expense">Rp 0</h2>
+          <span class="card-subtext" id="expenseCount">0 transaksi</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content: Form & Table -->
+    <main class="main-content">
+      <!-- Left: Transaction Input Form -->
+      <section class="card form-section">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-circle-plus"></i> Tambah Transaksi</h3>
+          <p class="text-muted">Data akan langsung disimpan ke file Excel di komputer</p>
+        </div>
+
+        <form id="transactionForm" class="form-body">
+          <!-- Type Selector -->
+          <div class="form-group">
+            <label class="form-label">Jenis Transaksi</label>
+            <div class="type-selector">
+              <input type="radio" id="typeIncome" name="transactionType" value="pemasukan" checked>
+              <label for="typeIncome" class="type-btn type-income-btn">
+                <i class="fa-solid fa-circle-arrow-down"></i>
+                <span>Pemasukan</span>
+              </label>
+
+              <input type="radio" id="typeExpense" name="transactionType" value="pengeluaran">
+              <label for="typeExpense" class="type-btn type-expense-btn">
+                <i class="fa-solid fa-circle-arrow-up"></i>
+                <span>Pengeluaran</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Date -->
+          <div class="form-group">
+            <label for="transactionDate" class="form-label">Tanggal Transaksi</label>
+            <div class="input-icon-wrapper">
+              <i class="fa-regular fa-calendar input-icon"></i>
+              <input type="date" id="transactionDate" class="form-input" required>
+            </div>
+          </div>
+
+          <!-- Amount -->
+          <div class="form-group">
+            <label for="transactionAmount" class="form-label">Nominal (Rp)</label>
+            <div class="input-icon-wrapper">
+              <span class="input-prefix">Rp</span>
+              <input type="text" id="transactionAmount" class="form-input has-prefix" placeholder="0" required
+                autocomplete="off">
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label for="transactionDesc" class="form-label">Keterangan / Catatan</label>
+            <div class="input-icon-wrapper">
+              <i class="fa-regular fa-pen-to-square input-icon"></i>
+              <input type="text" id="transactionDesc" class="form-input"
+                placeholder="Contoh: Penjualan produk, Beli stok bahan..." required>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn btn-primary btn-block">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span>Simpan ke File Excel</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Right: Transaction History Table -->
+      <section class="card table-section">
+        <div class="card-header table-header-bar">
+          <div>
+            <h3><i class="fa-solid fa-list-check"></i> Riwayat Transaksi</h3>
+            <p class="text-muted" id="tableSubtitle">Tersinkronisasi langsung dengan file Excel di komputer</p>
+          </div>
+
+          <!-- Filters and Search -->
+          <div class="table-controls">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input type="text" id="searchInput" placeholder="Cari keterangan..." class="search-input">
+            </div>
+            <div class="filter-box">
+              <select id="filterType" class="filter-select">
+                <option value="all">Semua Jenis</option>
+                <option value="pemasukan">Pemasukan</option>
+                <option value="pengeluaran">Pengeluaran</option>
+              </select>
+            </div>
+            <button id="btnClearAll" class="btn btn-outline-danger" title="Hapus Semua Data & Reset File Excel">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>Reset Data</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-responsive">
+          <table class="transaction-table" id="transactionTable">
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Keterangan</th>
+                <th>Jenis</th>
+                <th class="text-right">Nominal</th>
+                <th class="text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="transactionList">
+              <!-- Transactions will be dynamically rendered here -->
+            </tbody>
+          </table>
+
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h4>Belum Ada Transaksi</h4>
+            <p>Silakan tambahkan data pemasukan atau pengeluaran pertama Anda.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Hidden file input for opening existing Excel files -->
+  <input type="file" id="filePickerInput" accept=".xlsx, .xls, .csv" style="display: none;">
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast">
+    <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+    <span id="toastMessage">Pesan pemberitahuan</span>
+  </div>
+
+  <!-- Custom JS -->
+  <script src="script.js"></script>
+</body>
+
+</html>
